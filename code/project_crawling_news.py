@@ -3,6 +3,7 @@
 # 데이터타입 칼럼명: naver_news
 
 # 공통 함수
+from lib2to3.pgen2 import driver
 import os
 #from typing import final
 #from Funcs import funcs
@@ -24,7 +25,7 @@ from urllib.parse import urlencode, quote_plus, unquote
 import xml.etree.ElementTree as ET
 
 # WEB CRAWLING
-from fake_useragent import UserAgent    #pip install fake-useragent
+# from fake_useragent import UserAgent    #pip install fake-useragent
 # from bs4 import BeautifulSoup as bs
 from selenium import webdriver
 # from selenium.webdriver.common.by import By
@@ -34,7 +35,7 @@ from selenium import webdriver
 
 # 셀레니움 OPTION 설정
 # WEBDRIVER_PATH = f"{os.getcwd()}/chromedriver"
-WEBDRIVER_PATH = f"D:\lch\workspace\project\chromedriver.exe"
+WEBDRIVER_PATH = f"D:\Python\WorkSpace\dmcProject\chromedriver.exe"
 WEBDRIVER_OPTIONS = webdriver.ChromeOptions()
 # WEBDRIVER_OPTIONS.add_argument('headless')
 WEBDRIVER_OPTIONS.add_argument('--disable-dev-shm-usage')
@@ -138,136 +139,100 @@ def naver_news(is_test=False, print_failed=False, file_path=None):
 def crawler_naver_news(biz_no, company_name, ceo_name, date_date):
     """
     # date_date가 없으면 초기 적재 → 날짜 기간 조건 없이 검색
-
     # date_date가 있으면 업데이트 적재 → 특정 기간 조건 검색
     """
     results = []
+    news_urls = []
+    news_titles = []
+    news_dates = []
+    news_contents = []
 
     keyword = company_name
     # 셀레니움 크롬 웹드라이버 생성
     webDriver = webdriver.Chrome(options=WEBDRIVER_OPTIONS, executable_path=WEBDRIVER_PATH)
-    webDriver = webdriver.Chrome(options=WEBDRIVER_OPTIONS, executable_path='D:\lch\workspace\project\chromedriver.exe')
     try: # 셀레니움 비정상 종료 대비
         SrchKeyword = f'"{keyword}"'
 
-        # 포스팅 개수 계산
-        url = naverNewsUrl(pageNo=1, keyword=SrchKeyword) if date_date is None else naverNewsUrl(pageNo=1, keyword=SrchKeyword, date_date=date_date)
-        webDriver.get(url) # 셀레니움 HTTP/GET method 실행
-        time.sleep(1) # 1초 대기
-
-        # "css selector" 로 검색 결과 수 수집
-        css_selector = 'div.group_news > ul.list_news > li div.news_area > a'
-        tot_num_news = webDriver.find_element_by_css_selector(css_selector)
-        while True:
-            if ',' not in tot_num_news:
-                break
-            tot_num_news = tot_num_news.replace(',', '')
-        tot_num_news = int(tot_num_news)
-
         # 데이터가 없는 경우
-        if tot_num_news < 1:
+        if False : #tot_num_news < 1:
             return
         else:
-            # 페이지 당 7개씩 존재 → "전체 건 수"/7 = 검색결과 페이지 수
-            tot_num_page = math.ceil(tot_num_news / 7)
+            pageNo = 0
             finger_print = set() # Hash Set 을 사용하여 직전 루프에서 반복 수집되는 블로그 방지
-            for pageNo in range(1, tot_num_page + 1):
+            while True:
                 if pageNo > 300:
                     break
-                url = naverNewsUrl(pageNo=pageNo, keyword=SrchKeyword) if date_date is None else naverNewsUrl(pageNo=pageNo, keyword=SrchKeyword, date_date=date_date)
+                url = naverNewsUrl(keyword=SrchKeyword) if date_date is None else naverNewsUrl(keyword=SrchKeyword, date_date=date_date)
                 webDriver.get(url)
                 time.sleep(1)
 
-                
-                css_selector = '#sp_nws34 > div > div > div.news_info > div.info_group > a.info.press'
-                newspaper_name = [i.text for i in webDriver.find_elements_by_css_selector(css_selector)] # 언론사 이름 수집
-                css_selector = 'div.info_post > div.writer_info > a > em.name_author'
-                author_name = [i.text for i in webDriver.find_elements_by_css_selector(css_selector)] # 뉴스 기자 이름 수집
-                css_selector = 'div.info_post > div.writer_info > span.date'
-                post_date = [i.text for i in webDriver.find_elements_by_css_selector(css_selector)] # 뉴스 날짜 수집
-                css_selector = 'div.group_news > ul.list_news > li div.news_area > div.news_info > a.title'
-                post_title = [i.text for i in webDriver.find_elements_by_css_selector(css_selector)] # 뉴스 제목 수집
-                
-                
-                # 직전 페이지와 같은 타이틀의 게시글이 반복될 경우 루프 종료
-                checker_lst = list(map(lambda o: o in finger_print, post_title))
-                checker = True
-                for x in checker_lst:
-                    checker = checker and x
-                if checker:
-                    break
-                finger_print = set(post_title)
-                
-                doc_id = [i.get_property('href').split('/')[-1] for i in webDriver.find_elements_by_xpath('//*[@id="content"]/section/div[2]/div/div/div[1]/div[1]/a[1]')] # 문서 ID 경로
-                upload_id = [f'{i}/{j}' for i,j in zip(author_name, doc_id)]
+                css_selector = 'div.news_wrap.api_ani_send > div > div.news_info > div.info_group > a.info'
+                ems = webDriver.find_elements_by_css_selector(css_selector)
+                for em in ems:
+                    if em.text == '네이버뉴스': # 언론사 홈페이지 말고 네이버 뉴스만 가져오기
+                        em.click()                        
+                        #새창으로 드라이버 전환
+                        webDriver.switch_to.window(webDriver.window_handles[1])
 
-                post_content = []
-                for i in range(1, len(newspaper_name) + 1):
-                    # 블로그 내용 수집
-                    css_selector = '#content > section > div.area_list_search > div:nth-child(' + str(
-                        i) + ') > div > div.info_post > div.desc > a.text'
-                    try:
-                        post = webDriver.find_element_by_css_selector(css_selector).text
-                    except Exception as e:
-                        post = ""
-                    post_content.append(post)
+                        current_url = webDriver.current_url
+                        news_urls.append(current_url) # 본문 링크 수집    
 
-                # JSON 형태로 저장
-                for idx in range(len(newspaper_name)):
-                    naver_news_data = {
-                        "BusinessNum": biz_no,
-                        "DataType": DataType,
-                        "SearchDate": str(datetime.datetime.now()).replace("T", ""),
-                        "SearchID": SearchID,
-                        "Data": {
-                            'NewsName':newspaper_name[idx],
-                            'AuthorName':author_name[idx],
-                            'PostDate':calc_date(post_date[idx]),
-                            'PostTitle':post_title[idx],
-                            'PostContent':post_content[idx],
-                        }
-                    }
-                    results.append((upload_id[idx], naver_news_data))
-        return results
+                        # 뉴스 타입 분류
+                        news_type = current_url.split('.')[0].split('//')[1]       
+                        news_titles.append(webDriver.title.split('::')[0])# 본문 기사 제목 수집
+
+                        if news_type == 'entertain':
+                            css_selector = '#content > div.end_ct > div > div.article_info > span > em'
+                            #sp_nws4 > div > div > div.news_info > div.info_group > span.info 
+                            news_dates.append(webDriver.find_element_by_css_selector(css_selector).text) # 본문 기사 게시 일자 및 시간 수집
+                            
+                            css_selector = '#content > div.end_ct > div > div.end_body_wrp'
+                            news_contents.append(webDriver.find_element_by_css_selector(css_selector).text) # 본문 기사 본문 내용 수집
+
+                        elif news_type == 'sports':
+                            css_selector = '#content > div > div.content > div > div.news_headline > div > span:nth-child(1)'
+                            date = webDriver.find_element_by_css_selector(css_selector).text
+                            date = date.split(' ')
+                            date = date[1] + ' ' + date[2] + ' ' + date[3]
+                            news_dates.append(date) # 본문 기사 게시 일자 및 시간 수집
+                            
+                            css_selector = '#newsEndContents'
+                            news_contents.append(webDriver.find_element_by_css_selector(css_selector).text) # 본문 기사 본문 내용 수집
+
+                        # 현재 탭 닫기
+                        webDriver.close()
+                        # 다시처음 탭으로 돌아가기
+                        webDriver.switch_to.window(webDriver.window_handles[0])
+                
+        return zip(news_dates, news_titles, news_contents, news_urls) , ['Date', 'Title', 'Content', 'URL']
     except Exception as e:
         print('naver_news_data Error: {}'.format(e))
-        time.sleep(30)
         return "error"
     finally:
         webDriver.close()
 
 
 # URL Query 생성
-def naverNewsUrl(pageNo, keyword, date_date=None):
-    base_url = "https://search.naver.com/search.naver?where=news&ie=utf8&sm=nws_hty&query="
-    pageNo = (pageNo-1)*10+1
-    base_url = f"https://search.naver.com/search.naver?where=news&sm=tab_pge&query={keyword}&start={pageNo}"
-    '''
+def naverNewsUrl(keyword, date_date=None):
+    base_url = f"https://search.naver.com/search.naver?where=news&sm=tab_pge&"
+    
     if date_date is None:
         queryParams = urlencode({
-            quote_plus('pageNo'): pageNo,
-            quote_plus('rangeType'): 'ALL',
-            quote_plus('orderBy'): 'sim',
-            quote_plus('keyword'): unquote(keyword)
-        }, encoding='utf-8')
-      
-        
+            quote_plus('query'): keyword,
+        }, encoding='utf-8')           
     else:
         queryParams = urlencode({
-            quote_plus('pageNo'): pageNo,
-            quote_plus('rangeType'): 'ALL',
-            quote_plus('orderBy'): 'sim',
-            quote_plus('keyword'): unquote(keyword),
-            quote_plus('startDate'): unquote(date_date),
-            quote_plus('endDate'): unquote(SearchDate[:10]),
+            quote_plus('query'): keyword,
+            quote_plus('ds'): unquote(date_date),
+            quote_plus('de'): unquote(SearchDate[:10]),
         
         }, encoding='utf-8')
       
-
     url = base_url + queryParams
-    '''
-    url = base_url
     return url
+
+
+
 
 # 페이지에 기록된 시간 표시를 표준시간 (연,월,일) 표시로 변경
 # 예) "1시간전" → [현재시간] - 1시간 → 2022-07-05
