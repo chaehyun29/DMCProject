@@ -11,6 +11,6 @@
    - [kimhoegon](https://github.com/kimhoegon)
    - [chaehyun29](https://github.com/chaehyun29)
  
-## 기획 기간
-  - 2022.07.06 - 2022.07.19
+ - 기획 기간
+   - 2022.07.06 - 2022.07.19
   
