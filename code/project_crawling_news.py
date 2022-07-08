@@ -28,14 +28,14 @@ import xml.etree.ElementTree as ET
 # from fake_useragent import UserAgent    #pip install fake-useragent
 # from bs4 import BeautifulSoup as bs
 from selenium import webdriver
-# from selenium.webdriver.common.by import By
+from selenium.webdriver.common.by import By
 # from selenium.webdriver.support import expected_conditions as EC
 # from selenium.webdriver.support.wait import WebDriverWait
 # from selenium.webdriver.common.keys import Keys
 
 # 셀레니움 OPTION 설정
 # WEBDRIVER_PATH = f"{os.getcwd()}/chromedriver"
-WEBDRIVER_PATH = f"D:\Python\WorkSpace\dmcProject\chromedriver.exe"
+WEBDRIVER_PATH = f"C:\chromedriver.exe"
 WEBDRIVER_OPTIONS = webdriver.ChromeOptions()
 # WEBDRIVER_OPTIONS.add_argument('headless')
 WEBDRIVER_OPTIONS.add_argument('--disable-dev-shm-usage')
@@ -47,93 +47,17 @@ DataType = "naver_news"
 SearchDate = str(datetime.datetime.now()).replace("T", "")
 SearchID = "autoSystem"
 
-# 실행 시 process(...) 또는 naver_news(...) 호출
 
-# [(사번, 회사 이름)] 입력 필요
-def process(bsn_lst:list, is_test=False, print_failed=False, file_path=None):
-    bsn_set = set()
-    if not file_path is None:
-        # tmp = funcs.load_bsn_list(file_path)
-        tmp = get_bizNo()
-        bsn_set =  set(tmp)
-    try:
-        for bsn_info in tqdm(bsn_lst):
-            if len(bsn_info)!=2:
-                continue
-            biz_no, company_name = bsn_info
-            if company_name is None:
-                continue
-            # 작업 기록 존재시 통과
-            if str(biz_no) in bsn_set:
-                continue
-            bsn_set.add(str(biz_no))
-            
-            results = crawler_naver_news(biz_no, company_name, None, None)
-            results = sorted(results, key=lambda o: o[1]['Data']['PostDate'])
-            results = results[:4000]
-            for res in results:
-                #funcs.save_data_to_es(index=IndexName, data=res[1], id=res[0])
-                pass
-            if not is_test:
-                #funcs.update_searchDate_mysql(DataType, [biz_no])
-                pass
-    finally:
-        if not file_path is None:
-            #불러온 list 저장부
-            #funcs.save_bsn_list(list(bsn_set), file_path)
-            pass
 
 def load_company_data():
     company_df = pd.read_csv('./Data/company_all_data.csv',encoding = 'ANSI')
+    
     return company_df
 
 def get_bizNo():
      company_df = load_company_data()
      result = company_df['사업자등록번호'].to_numpy()
      return result
-
-
-# MySQL에서 (사번, 회사 이름) 로드
-def naver_news(is_test=False, print_failed=False, file_path=None):
-    # result = funcs.get_bizNo_mysql(DataType=DataType)
-    result = load_company_data()
-    biz_no_lst = []
-    bsn_set = set()
-    if not file_path is None:
-        # tmp = funcs.load_bsn_list(file_path)
-        tmp = get_bizNo()
-        bsn_set =  set(tmp)
-    try:
-        for biz_no, company_name, ceo_name, biz_code, biz_type in tqdm(result):
-            print(f'번호 {biz_no} 회사명 {company_name} 대표자명{ceo_name} 업종코드{biz_code} 업종{biz_type}')
-         
-        #for biz_no, company_name, ceo_name, date_date in tqdm(result):
-            
-            # 작업 기록 존재시 통과
-            if str(biz_no) in bsn_set:
-                continue
-            bsn_set.add(str(biz_no))
-
-            biz_no_lst.append(biz_no)
-            if company_name is None:
-                continue
-            # results = crawler_naver_blog(biz_no, company_name, ceo_name, date_date)
-            results = crawler_naver_news(biz_no, company_name, ceo_name)
-            results = list(filter(lambda o: len(o)>=2, results))
-            results = sorted(results, key=lambda o: o[1]['Data']['PostDate']) # PostDate 기준 정렬
-            results = results[:4000] # 결과 중 4000개 까지 저장
-            for res in results:
-                pass
-                # funcs.save_data_to_es(index=IndexName, data=res[1], id=res[0])
-
-    finally:
-        if not is_test:
-            # funcs.update_searchDate_mysql(DataType, biz_no_lst)
-            pass
-        if not file_path is None:
-            # 파일저장부
-            # funcs.save_bsn_list(list(bsn_set), file_path)
-            pass
 
 
 def crawler_naver_news(biz_no, company_name, ceo_name, date_date):
@@ -149,7 +73,7 @@ def crawler_naver_news(biz_no, company_name, ceo_name, date_date):
 
     keyword = company_name
     # 셀레니움 크롬 웹드라이버 생성
-    webDriver = webdriver.Chrome(options=WEBDRIVER_OPTIONS, executable_path=WEBDRIVER_PATH)
+    webDriver = webdriver.Chrome(options=WEBDRIVER_OPTIONS, executable_path="C:\chromedriver.exe")
     try: # 셀레니움 비정상 종료 대비
         SrchKeyword = f'"{keyword}"'
 
@@ -159,15 +83,17 @@ def crawler_naver_news(biz_no, company_name, ceo_name, date_date):
         else:
             pageNo = 0
             finger_print = set() # Hash Set 을 사용하여 직전 루프에서 반복 수집되는 블로그 방지
-            while True:
-                if pageNo > 300:
-                    break
-                url = naverNewsUrl(keyword=SrchKeyword) if date_date is None else naverNewsUrl(keyword=SrchKeyword, date_date=date_date)
-                webDriver.get(url)
-                time.sleep(1)
+            
+            url = naverNewsUrl(keyword=SrchKeyword) if date_date is None else naverNewsUrl(keyword=SrchKeyword, date_date=date_date)
+            webDriver.get(url)
+            time.sleep(1)
+            while pageNo < 3:
 
-                css_selector = 'div.news_wrap.api_ani_send > div > div.news_info > div.info_group > a.info'
-                ems = webDriver.find_elements_by_css_selector(css_selector)
+                # css_selector = 'div.news_wrap.api_ani_send > div > div.news_info > div.info_group > a.info'
+                # ems = webDriver.find_elements_by_css_selector(css_selector)
+                ems = webDriver.find_elements(By.CSS_SELECTOR,'a.info') 
+                
+                if len(ems) == 0 : break
                 for em in ems:
                     if em.text == '네이버뉴스': # 언론사 홈페이지 말고 네이버 뉴스만 가져오기
                         em.click()                        
@@ -182,29 +108,63 @@ def crawler_naver_news(biz_no, company_name, ceo_name, date_date):
                         news_titles.append(webDriver.title.split('::')[0])# 본문 기사 제목 수집
 
                         if news_type == 'entertain':
-                            css_selector = '#content > div.end_ct > div > div.article_info > span > em'
                             #sp_nws4 > div > div > div.news_info > div.info_group > span.info 
-                            news_dates.append(webDriver.find_element_by_css_selector(css_selector).text) # 본문 기사 게시 일자 및 시간 수집
                             
+                            # news_contents.append(webDriver.find_element_by_css_selector(css_selector).text) 
+
+                            css_selector = '#content > div.end_ct > div > div.article_info > span > em'
+                            news_dates.append(webDriver.find_element(By.CSS_SELECTOR,css_selector).text) # 본문 기사 게시 일자 및 시간 수집
+
                             css_selector = '#content > div.end_ct > div > div.end_body_wrp'
-                            news_contents.append(webDriver.find_element_by_css_selector(css_selector).text) # 본문 기사 본문 내용 수집
+                            news_contents.append(webDriver.find_element(By.CSS_SELECTOR,css_selector).text) # 본문 기사 본문 내용 수집
+                            
 
                         elif news_type == 'sports':
+                            # date = webDriver.find_element_by_css_selector(css_selector).text
+                            # date = date.split(' ')
+                            # date = date[1] + ' ' + date[2] + ' ' + date[3]
+                            # news_dates.append(date) # 본문 기사 게시 일자 및 시간 수집
+                            
+                            # news_contents.append(webDriver.find_element_by_css_selector(css_selector).text) # 본문 기사 본문 내용 수집
+
                             css_selector = '#content > div > div.content > div > div.news_headline > div > span:nth-child(1)'
-                            date = webDriver.find_element_by_css_selector(css_selector).text
+                            date =webDriver.find_element(By.CSS_SELECTOR,css_selector).text
                             date = date.split(' ')
                             date = date[1] + ' ' + date[2] + ' ' + date[3]
                             news_dates.append(date) # 본문 기사 게시 일자 및 시간 수집
-                            
-                            css_selector = '#newsEndContents'
-                            news_contents.append(webDriver.find_element_by_css_selector(css_selector).text) # 본문 기사 본문 내용 수집
 
+                            css_selector = '#newsEndContents'
+                            news_contents.append(webDriver.find_element(By.CSS_SELECTOR, css_selector).text) # 본문 기사 본문 내용 수집
+                        
+                        else : 
+                            # news_dates.append(webDriver.find_element_by_css_selector(css_selector).text) 
+
+                            css_selector = '#ct > div.media_end_head.go_trans > div.media_end_head_info.nv_notrans > div.media_end_head_info_datestamp > div > span'
+                            news_dates.append(webDriver.find_element(By.CSS_SELECTOR,css_selector).text) # 본문 기사 게시 일자 및 시간 수집
+                            
+                            css_selector = '#contents'
+                            news_contents.append(webDriver.find_element(By.CSS_SELECTOR,css_selector).text) # 본문 내용 수집
+                            
                         # 현재 탭 닫기
                         webDriver.close()
                         # 다시처음 탭으로 돌아가기
                         webDriver.switch_to.window(webDriver.window_handles[0])
-                
-        return zip(news_dates, news_titles, news_contents, news_urls) , ['Date', 'Title', 'Content', 'URL']
+
+                #main_pack > div.api_sc_page_wrap > div > a.btn_next
+                css_selector = '#main_pack > div.api_sc_page_wrap > div > a.btn_next'
+                btn_next = webDriver.find_element(By.CSS_SELECTOR,css_selector)
+                btn_next.click()
+                pageNo += 1
+
+        #크롤링 데이터 저장  
+        news_data = []
+        news_cloumns = []
+        if len(news_dates) != 0:
+            news_data = zip(news_dates, news_titles, news_contents, news_urls)
+            news_cloumns = ['Date', 'Title', 'Content', 'URL']
+            append_csv(company_name, news_data, news_cloumns)
+                    
+        return news_data , news_cloumns
     except Exception as e:
         print('naver_news_data Error: {}'.format(e))
         return "error"
@@ -234,6 +194,7 @@ def naverNewsUrl(keyword, date_date=None):
 
 
 
+
 # 페이지에 기록된 시간 표시를 표준시간 (연,월,일) 표시로 변경
 # 예) "1시간전" → [현재시간] - 1시간 → 2022-07-05
 def calc_date(date_str:str):
@@ -255,6 +216,22 @@ def calc_date(date_str:str):
 
     return result.strftime("%Y-%m-%d")
 
+def append_csv(company_name, news_data, news_cloumns):
+    try:
+        df = pd.DataFrame(news_data)
+        df.columns = news_cloumns
+        df.to_csv(f'.\\company_news_data\\{company_name}_news_list.csv',encoding='utf-8-sig',index=False)
+        
+        '''
+        with open(f'{company_name}_news_list.csv', 'a') as f :
+            data = news_cloumns
+            f.write(data)
+            data = news_data
+            f.write(data)
+        '''
 
+    except Exception as e:
+        print('append csv Error: {}'.format(e))
+        return "error"
 
-news_data = crawler_naver_news('1010291472', '글로벌에이스', '김선남', None)
+        
