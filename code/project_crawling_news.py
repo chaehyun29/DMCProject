@@ -90,6 +90,9 @@ def crawler_naver_news(company_index, biz_no, company_name, ceo_name, date_date)
             finger_print = set() # Hash Set 을 사용하여 직전 루프에서 반복 수집되는 블로그 방지
             
             url = naverNewsUrl(keyword=SrchKeyword) if date_date is None else naverNewsUrl(keyword=SrchKeyword, date_date=date_date)
+            if date_date is None:
+                date_date = '' 
+
             webDriver.get(url)
             time.sleep(1)
             while pageNo < 300:
@@ -114,7 +117,6 @@ def crawler_naver_news(company_index, biz_no, company_name, ceo_name, date_date)
 
                         if news_type == 'entertain':
                             #sp_nws4 > div > div > div.news_info > div.info_group > span.info 
-                            
                             # news_contents.append(webDriver.find_element_by_css_selector(css_selector).text) 
 
                             css_selector = '#content > div.end_ct > div > div.article_info > span > em'
@@ -155,9 +157,11 @@ def crawler_naver_news(company_index, biz_no, company_name, ceo_name, date_date)
                         # 다시처음 탭으로 돌아가기
                         webDriver.switch_to.window(webDriver.window_handles[0])
 
-                #main_pack > div.api_sc_page_wrap > div > a.btn_next
+                #다음페이지 버튼 -> 비활성화면 break
                 css_selector = '#main_pack > div.api_sc_page_wrap > div > a.btn_next'
                 btn_next = webDriver.find_element(By.CSS_SELECTOR,css_selector)
+
+                if btn_next.is_enabled(): break
                 btn_next.click()
                 pageNo += 1
 
