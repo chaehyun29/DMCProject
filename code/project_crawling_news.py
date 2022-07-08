@@ -17,6 +17,9 @@ import json, datetime, math, time, pandas as pd
 import random, string, re
 from dateutil.relativedelta import relativedelta
 
+import logging
+import traceback
+
 # OPEN API
 import urllib.request
 from urllib.request import Request, urlopen
@@ -50,7 +53,7 @@ SearchID = "autoSystem"
 
 
 def load_company_data():
-    company_df = pd.read_csv('./Data/company_all_data.csv',encoding = 'ANSI')
+    company_df = pd.read_csv('./Data/company_data.csv')
     
     return company_df
 
@@ -60,12 +63,14 @@ def get_bizNo():
      return result
 
 
-def crawler_naver_news(biz_no, company_name, ceo_name, date_date):
+def crawler_naver_news(company_index, biz_no, company_name, ceo_name, date_date):
     """
     # date_date가 없으면 초기 적재 → 날짜 기간 조건 없이 검색
     # date_date가 있으면 업데이트 적재 → 특정 기간 조건 검색
     """
-    results = []
+    
+    logging.basicConfig(filename='./Logs/crawler_naver_news.log', level=logging.ERROR)
+    
     news_urls = []
     news_titles = []
     news_dates = []
@@ -87,7 +92,7 @@ def crawler_naver_news(biz_no, company_name, ceo_name, date_date):
             url = naverNewsUrl(keyword=SrchKeyword) if date_date is None else naverNewsUrl(keyword=SrchKeyword, date_date=date_date)
             webDriver.get(url)
             time.sleep(1)
-            while pageNo < 3:
+            while pageNo < 300:
 
                 # css_selector = 'div.news_wrap.api_ani_send > div > div.news_info > div.info_group > a.info'
                 # ems = webDriver.find_elements_by_css_selector(css_selector)
@@ -162,11 +167,12 @@ def crawler_naver_news(biz_no, company_name, ceo_name, date_date):
         if len(news_dates) != 0:
             news_data = zip(news_dates, news_titles, news_contents, news_urls)
             news_cloumns = ['Date', 'Title', 'Content', 'URL']
-            append_csv(company_name, news_data, news_cloumns)
+            append_csv(company_index, company_name, news_data, news_cloumns)
                     
         return news_data , news_cloumns
     except Exception as e:
         print('naver_news_data Error: {}'.format(e))
+        logging.error(traceback.format_exc())
         return "error"
     finally:
         webDriver.close()
@@ -183,8 +189,8 @@ def naverNewsUrl(keyword, date_date=None):
     else:
         queryParams = urlencode({
             quote_plus('query'): keyword,
-            quote_plus('ds'): unquote(date_date),
-            quote_plus('de'): unquote(SearchDate[:10]),
+            quote_plus('ds'): unquote(date_date[:8]),
+            quote_plus('de'): unquote(date_date[8:]),
         
         }, encoding='utf-8')
       
@@ -194,33 +200,14 @@ def naverNewsUrl(keyword, date_date=None):
 
 
 
-
-# 페이지에 기록된 시간 표시를 표준시간 (연,월,일) 표시로 변경
-# 예) "1시간전" → [현재시간] - 1시간 → 2022-07-05
-def calc_date(date_str:str):
-    # 정규표현식으로 문장 내 숫자 존재 확인
-    matched_lst = re.findall("\d+", date_str)
-    if len(matched_lst)==3:
-        return f"{matched_lst[0]}-{matched_lst[1].zfill(2)}-{matched_lst[2].zfill(2)}"
+def append_csv(company_index, company_name, news_data, news_cloumns):
     
-    delta = None
-    delta_int = int(re.findall("\d+", date_str)[0])
-    if "시간" in date_str:
-        delta = datetime.timedelta(hours=delta_int)
-    elif "분" in date_str:
-        delta = datetime.timedelta(minutes=delta_int)
-    elif "초" in date_str:
-        delta = datetime.timedelta(seconds=delta_int)
+    logging.basicConfig(filename='./Logs/append_csv_log.log', level=logging.ERROR)
     
-    result = datetime.datetime.strptime(SearchDate, '%Y-%m-%d %H:%M:%S.%f') - delta
-
-    return result.strftime("%Y-%m-%d")
-
-def append_csv(company_name, news_data, news_cloumns):
     try:
         df = pd.DataFrame(news_data)
         df.columns = news_cloumns
-        df.to_csv(f'.\\company_news_data\\{company_name}_news_list.csv',encoding='utf-8-sig',index=False)
+        df.to_csv(f'.\\company_news_data\\{company_name}_news_list_{company_index}.csv',encoding='utf-8-sig',index=False)
         
         '''
         with open(f'{company_name}_news_list.csv', 'a') as f :
@@ -232,6 +219,7 @@ def append_csv(company_name, news_data, news_cloumns):
 
     except Exception as e:
         print('append csv Error: {}'.format(e))
+        logging.error(traceback.format_exc())
         return "error"
 
         
