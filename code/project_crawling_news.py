@@ -1,8 +1,3 @@
-# 3. 뉴스
-# 유형: WEB CRAWLING
-# 데이터타입 칼럼명: naver_news
-
-# 공통 함수
 from lib2to3.pgen2 import driver
 import os
 from tqdm import tqdm
