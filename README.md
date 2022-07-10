@@ -13,4 +13,7 @@
  
  - 프로젝트 기간
    - 2022.07.06 - 2022.07.19
+   
+ - 프로젝트 기획서
+   - [기획서 ppt](https://github.com/chaehyun29/DMCProject/Etc/E1I3_기획서.pptx)
   
