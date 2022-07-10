@@ -1,3 +1,4 @@
+
 from lib2to3.pgen2 import driver
 import os
 from tqdm import tqdm
@@ -27,7 +28,6 @@ from selenium.webdriver.common.by import By
 # 셀레니움 OPTION 설정
 WEBDRIVER_PATH = f"C:\chromedriver.exe"
 WEBDRIVER_OPTIONS = webdriver.ChromeOptions()
-# WEBDRIVER_OPTIONS.add_argument('headless')
 
 IndexName = "source_data"
 DataType = "naver_news"
