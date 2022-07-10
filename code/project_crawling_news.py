@@ -5,8 +5,6 @@
 # 공통 함수
 from lib2to3.pgen2 import driver
 import os
-#from typing import final
-#from Funcs import funcs
 from tqdm import tqdm
 
 import pandas as pd
@@ -28,39 +26,19 @@ from urllib.parse import urlencode, quote_plus, unquote
 import xml.etree.ElementTree as ET
 
 # WEB CRAWLING
-# from fake_useragent import UserAgent    #pip install fake-useragent
-# from bs4 import BeautifulSoup as bs
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-# from selenium.webdriver.support import expected_conditions as EC
-# from selenium.webdriver.support.wait import WebDriverWait
-# from selenium.webdriver.common.keys import Keys
 
 # 셀레니움 OPTION 설정
-# WEBDRIVER_PATH = f"{os.getcwd()}/chromedriver"
 WEBDRIVER_PATH = f"C:\chromedriver.exe"
 WEBDRIVER_OPTIONS = webdriver.ChromeOptions()
 # WEBDRIVER_OPTIONS.add_argument('headless')
-WEBDRIVER_OPTIONS.add_argument('--disable-dev-shm-usage')
-WEBDRIVER_OPTIONS.add_argument('--no-sandbox')
-WEBDRIVER_OPTIONS.add_argument('--ignore-certificate-errors')
 
 IndexName = "source_data"
 DataType = "naver_news"
 SearchDate = str(datetime.datetime.now()).replace("T", "")
 SearchID = "autoSystem"
 
-
-
-def load_company_data():
-    company_df = pd.read_csv('./Data/company_data.csv')
-    
-    return company_df
-
-def get_bizNo():
-     company_df = load_company_data()
-     result = company_df['사업자등록번호'].to_numpy()
-     return result
 
 
 def crawler_naver_news(company_index, biz_no, company_name, ceo_name, date_date):
@@ -212,14 +190,6 @@ def append_csv(company_index, company_name, news_data, news_cloumns):
         df = pd.DataFrame(news_data)
         df.columns = news_cloumns
         df.to_csv(f'.\\company_news_data\\{company_name}_news_list_{company_index}.csv',encoding='utf-8-sig',index=False)
-        
-        '''
-        with open(f'{company_name}_news_list.csv', 'a') as f :
-            data = news_cloumns
-            f.write(data)
-            data = news_data
-            f.write(data)
-        '''
 
     except Exception as e:
         print('append csv Error: {}'.format(e))
